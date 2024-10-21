@@ -13,6 +13,7 @@ import (
 	"github.com/grafana/grafana-plugin-sdk-go/data/sqlutil"
 	"github.com/grafana/sqlds/v2"
 	"github.com/pkg/errors"
+	"github.com/trinodb/grafana-trino/pkg/trino/constants"
 	"github.com/trinodb/grafana-trino/pkg/trino/driver"
 	"github.com/trinodb/grafana-trino/pkg/trino/models"
 )
@@ -79,11 +80,20 @@ func (s *TrinoDatasource) Converters() (sc []sqlutil.Converter) {
 }
 
 func (s *TrinoDatasource) SetQueryArgs(ctx context.Context, headers http.Header) []interface{} {
-	user := ctx.Value("X-Trino-User")
-	if user == nil {
-		return []interface{}{}
+	var args []interface{}
+
+	user := ctx.Value(constants.TrinoUserHeader)
+	accessToken := ctx.Value(constants.AccessTokenKey)
+
+	if user != nil {
+		args = append(args, sql.Named(constants.TrinoUserHeader, string(user.(*backend.User).Login)))
 	}
-	return []interface{}{sql.Named("X-Trino-User", string(user.(*backend.User).Login))}
+
+	if accessToken != nil {
+		args = append(args, sql.Named(constants.AccessTokenKey, accessToken.(string)))
+	}
+
+	return args
 }
 
 func (s *TrinoDatasource) Schemas(ctx context.Context, options sqlds.Options) ([]string, error) {
